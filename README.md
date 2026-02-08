@@ -96,7 +96,3 @@ If you open a PR, include:
 - what changed
 - why it changed
 - how you tested it
-
-## License
-
-No explicit license file is currently included. If you plan to distribute a fork, add an explicit license first.
