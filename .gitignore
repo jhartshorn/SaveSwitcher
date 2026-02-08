@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+
+# Gradle
+.gradle/
+.gradle-home/
+build/
+**/build/
+
+# Android local config
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Kotlin / Java
+*.class
+
+# Logs
+*.log
+
+# OS temporary files
+*.swp
+*.swo
