@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,14 +17,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,17 +38,34 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.saveswitcher.ui.model.EmulatorUiModel
 
+private data class EditState(
+    val id: String?,
+    val name: String,
+    val extensions: String,
+    val folderUri: String?,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmulatorListScreen(
     emulators: List<EmulatorUiModel>,
     onAddEmulator: (name: String, folderUri: String, extensions: List<String>) -> Unit,
+    onUpdateEmulator: (id: String, name: String, folderUri: String, extensions: List<String>) -> Unit,
+    onDeleteEmulator: (id: String) -> Unit,
 ) {
     val context = LocalContext.current
-    var showAddSheet by remember { mutableStateOf(false) }
-    var emulatorName by remember { mutableStateOf("") }
-    var extensionInput by remember { mutableStateOf(".sav,.dsv,.srm") }
-    var selectedFolderUri by remember { mutableStateOf<String?>(null) }
+    var editState by remember {
+        mutableStateOf(
+            EditState(
+                id = null,
+                name = "",
+                extensions = ".sav,.dsv,.srm",
+                folderUri = null,
+            ),
+        )
+    }
+    var showSheet by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<EmulatorUiModel?>(null) }
 
     val folderPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -56,7 +75,7 @@ fun EmulatorListScreen(
             runCatching {
                 context.contentResolver.takePersistableUriPermission(uri, flags)
             }
-            selectedFolderUri = uri.toString()
+            editState = editState.copy(folderUri = uri.toString())
         }
     }
 
@@ -89,6 +108,7 @@ fun EmulatorListScreen(
                         }
                     }
                 }
+
                 items(emulators, key = { it.id }) { emulator ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(
@@ -108,13 +128,40 @@ fun EmulatorListScreen(
                                 text = "Extensions: ${emulator.extensions.joinToString(", ")}",
                                 style = MaterialTheme.typography.bodyLarge,
                             )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(
+                                    onClick = {
+                                        editState = EditState(
+                                            id = emulator.id,
+                                            name = emulator.name,
+                                            extensions = emulator.extensions.joinToString(","),
+                                            folderUri = emulator.folderUri,
+                                        )
+                                        showSheet = true
+                                    },
+                                ) {
+                                    Text("Edit")
+                                }
+                                TextButton(onClick = { pendingDelete = emulator }) {
+                                    Text("Remove")
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+
         FloatingActionButton(
-            onClick = { showAddSheet = true },
+            onClick = {
+                editState = EditState(
+                    id = null,
+                    name = "",
+                    extensions = ".sav,.dsv,.srm",
+                    folderUri = null,
+                )
+                showSheet = true
+            },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
@@ -124,34 +171,37 @@ fun EmulatorListScreen(
         }
     }
 
-    if (showAddSheet) {
-        ModalBottomSheet(onDismissRequest = { showAddSheet = false }) {
+    if (showSheet) {
+        ModalBottomSheet(onDismissRequest = { showSheet = false }) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(text = "Add Emulator", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = if (editState.id == null) "Add Emulator" else "Edit Emulator",
+                    style = MaterialTheme.typography.titleMedium,
+                )
 
                 OutlinedTextField(
-                    value = emulatorName,
-                    onValueChange = { emulatorName = it },
+                    value = editState.name,
+                    onValueChange = { editState = editState.copy(name = it) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     label = { Text("Emulator name") },
                 )
 
                 OutlinedTextField(
-                    value = extensionInput,
-                    onValueChange = { extensionInput = it },
+                    value = editState.extensions,
+                    onValueChange = { editState = editState.copy(extensions = it) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     label = { Text("Save extensions") },
                 )
 
                 Text(
-                    text = selectedFolderUri ?: "No folder selected",
+                    text = editState.folderUri ?: "No folder selected",
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyLarge,
@@ -163,27 +213,54 @@ fun EmulatorListScreen(
 
                 TextButton(
                     onClick = {
-                        val folder = selectedFolderUri ?: return@TextButton
-                        val extensions = extensionInput.split(",")
+                        val folder = editState.folderUri ?: return@TextButton
+                        val extensions = editState.extensions
+                            .split(",")
                             .map { it.trim() }
                             .filter { it.isNotEmpty() }
-                        if (emulatorName.isBlank() || extensions.isEmpty()) return@TextButton
+                        if (editState.name.isBlank() || extensions.isEmpty()) return@TextButton
 
-                        onAddEmulator(emulatorName.trim(), folder, extensions)
-                        emulatorName = ""
-                        extensionInput = ".sav,.dsv,.srm"
-                        selectedFolderUri = null
-                        showAddSheet = false
+                        if (editState.id == null) {
+                            onAddEmulator(editState.name.trim(), folder, extensions)
+                        } else {
+                            onUpdateEmulator(editState.id!!, editState.name.trim(), folder, extensions)
+                        }
+                        showSheet = false
                     },
-                    enabled = emulatorName.isNotBlank() && selectedFolderUri != null,
+                    enabled = editState.name.isNotBlank() && editState.folderUri != null,
                 ) {
-                    Text("Save Emulator")
+                    Text(if (editState.id == null) "Save Emulator" else "Update Emulator")
                 }
 
-                TextButton(onClick = { showAddSheet = false }) {
+                TextButton(onClick = { showSheet = false }) {
                     Text("Cancel")
                 }
             }
         }
+    }
+
+    pendingDelete?.let { emulator ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Remove Emulator") },
+            text = {
+                Text("Delete profile \"${emulator.name}\"? Save files on disk will not be deleted.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteEmulator(emulator.id)
+                        pendingDelete = null
+                    },
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }

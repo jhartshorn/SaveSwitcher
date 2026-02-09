@@ -25,9 +25,13 @@ fun SaveSwitcherNavHost(
     gameStatusMessage: String,
     isScanningGames: Boolean,
     onAddEmulator: (name: String, folderUri: String, extensions: List<String>) -> Unit,
+    onUpdateEmulator: (id: String, name: String, folderUri: String, extensions: List<String>) -> Unit,
+    onDeleteEmulator: (id: String) -> Unit,
     onAddUser: (displayName: String) -> Unit,
     onScanGames: () -> Unit,
     onSwitchUser: (game: GameUiModel, targetUserId: String, sourceOwnerUserId: String?) -> Unit,
+    onExportSave: (game: GameUiModel, exportFolderUri: String) -> Unit,
+    onImportSave: (game: GameUiModel, importFileUri: String) -> Unit,
 ) {
     NavHost(
         navController = navController,
@@ -38,6 +42,8 @@ fun SaveSwitcherNavHost(
             EmulatorListScreen(
                 emulators = emulators,
                 onAddEmulator = onAddEmulator,
+                onUpdateEmulator = onUpdateEmulator,
+                onDeleteEmulator = onDeleteEmulator,
             )
         }
         composable(Destination.Games.route) {
@@ -49,6 +55,8 @@ fun SaveSwitcherNavHost(
                 isScanning = isScanningGames,
                 onScanGames = onScanGames,
                 onSwitchUser = onSwitchUser,
+                onExportSave = onExportSave,
+                onImportSave = onImportSave,
             )
         }
         composable(Destination.Users.route) {
