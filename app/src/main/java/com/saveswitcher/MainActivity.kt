@@ -142,6 +142,33 @@ private fun SaveSwitcherApp() {
                     )
                 }
             },
+            onUpdateEmulator = { id, name, folderUri, extensions ->
+                val cleanedExtensions = extensions
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                if (name.isBlank() || folderUri.isBlank() || cleanedExtensions.isEmpty()) {
+                    return@SaveSwitcherNavHost
+                }
+
+                val existing = emulatorEntities.firstOrNull { it.id == id } ?: return@SaveSwitcherNavHost
+                scope.launch {
+                    val now = System.currentTimeMillis()
+                    db.emulatorDao().upsert(
+                        existing.copy(
+                            name = name,
+                            treeUri = folderUri,
+                            extensionsJson = cleanedExtensions.joinToString(","),
+                            updatedAt = now,
+                        ),
+                    )
+                }
+            },
+            onDeleteEmulator = { id ->
+                scope.launch {
+                    db.emulatorDao().deleteById(id)
+                    games.removeAll { it.emulatorId == id }
+                }
+            },
             onAddUser = { displayName ->
                 val normalizedId = UserIdNormalizer.normalize(displayName)
                 if (normalizedId.isBlank()) {

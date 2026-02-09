@@ -25,6 +25,8 @@ fun SaveSwitcherNavHost(
     gameStatusMessage: String,
     isScanningGames: Boolean,
     onAddEmulator: (name: String, folderUri: String, extensions: List<String>) -> Unit,
+    onUpdateEmulator: (id: String, name: String, folderUri: String, extensions: List<String>) -> Unit,
+    onDeleteEmulator: (id: String) -> Unit,
     onAddUser: (displayName: String) -> Unit,
     onScanGames: () -> Unit,
     onSwitchUser: (game: GameUiModel, targetUserId: String, sourceOwnerUserId: String?) -> Unit,
@@ -40,6 +42,8 @@ fun SaveSwitcherNavHost(
             EmulatorListScreen(
                 emulators = emulators,
                 onAddEmulator = onAddEmulator,
+                onUpdateEmulator = onUpdateEmulator,
+                onDeleteEmulator = onDeleteEmulator,
             )
         }
         composable(Destination.Games.route) {
