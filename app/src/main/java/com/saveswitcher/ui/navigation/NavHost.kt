@@ -28,6 +28,8 @@ fun SaveSwitcherNavHost(
     onAddUser: (displayName: String) -> Unit,
     onScanGames: () -> Unit,
     onSwitchUser: (game: GameUiModel, targetUserId: String, sourceOwnerUserId: String?) -> Unit,
+    onExportSave: (game: GameUiModel, exportFolderUri: String) -> Unit,
+    onImportSave: (game: GameUiModel, importFileUri: String) -> Unit,
 ) {
     NavHost(
         navController = navController,
@@ -49,6 +51,8 @@ fun SaveSwitcherNavHost(
                 isScanning = isScanningGames,
                 onScanGames = onScanGames,
                 onSwitchUser = onSwitchUser,
+                onExportSave = onExportSave,
+                onImportSave = onImportSave,
             )
         }
         composable(Destination.Users.route) {

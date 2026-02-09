@@ -1,5 +1,8 @@
 package com.saveswitcher.ui.screens
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.saveswitcher.ui.model.GameUiModel
@@ -39,8 +43,43 @@ fun GameListScreen(
     isScanning: Boolean,
     onScanGames: () -> Unit,
     onSwitchUser: (game: GameUiModel, targetUserId: String, sourceOwnerUserId: String?) -> Unit,
+    onExportSave: (game: GameUiModel, exportFolderUri: String) -> Unit,
+    onImportSave: (game: GameUiModel, importFileUri: String) -> Unit,
 ) {
+    val context = LocalContext.current
     var selectedGame by remember { mutableStateOf<GameUiModel?>(null) }
+    var pendingExportGame by remember { mutableStateOf<GameUiModel?>(null) }
+    var pendingImportGame by remember { mutableStateOf<GameUiModel?>(null) }
+
+    val exportFolderPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        val game = pendingExportGame
+        if (uri != null && game != null) {
+            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, flags)
+            }
+            onExportSave(game, uri.toString())
+        }
+        pendingExportGame = null
+    }
+
+    val importFilePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        val game = pendingImportGame
+        if (uri != null && game != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
+            onImportSave(game, uri.toString())
+        }
+        pendingImportGame = null
+    }
 
     Column(
         modifier = Modifier
@@ -123,11 +162,30 @@ fun GameListScreen(
                             overflow = TextOverflow.Ellipsis,
                         )
 
-                        TextButton(
-                            onClick = { selectedGame = game },
-                            enabled = users.isNotEmpty(),
-                        ) {
-                            Text("Switch User")
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            TextButton(
+                                onClick = { selectedGame = game },
+                                enabled = users.isNotEmpty(),
+                            ) {
+                                Text("Switch User")
+                            }
+                            TextButton(
+                                onClick = {
+                                    pendingExportGame = game
+                                    exportFolderPicker.launch(null)
+                                },
+                                enabled = game.baseSave != null,
+                            ) {
+                                Text("Export")
+                            }
+                            TextButton(
+                                onClick = {
+                                    pendingImportGame = game
+                                    importFilePicker.launch(arrayOf("*/*"))
+                                },
+                            ) {
+                                Text("Import")
+                            }
                         }
                     }
                 }

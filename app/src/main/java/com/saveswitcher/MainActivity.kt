@@ -212,6 +212,24 @@ private fun SaveSwitcherApp() {
                     isScanningGames = false
                 }
             },
+            onExportSave = { game, exportFolderUri ->
+                scope.launch {
+                    val message = saveFileService.exportCurrentSave(game, exportFolderUri)
+                    gameStatusMessage = message
+                }
+            },
+            onImportSave = { game, importFileUri ->
+                scope.launch {
+                    val message = saveFileService.importSave(game, importFileUri)
+                    gameStatusMessage = message
+
+                    isScanningGames = true
+                    val rescanned = saveFileService.scanGames(emulators)
+                    games.clear()
+                    games.addAll(orderGamesByRecentSwitch(rescanned, switchOps))
+                    isScanningGames = false
+                }
+            },
         )
     }
 }
