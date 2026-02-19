@@ -4,8 +4,10 @@ SaveSwitcher is an Android app for managing per-user emulator saves by swapping 
 > [!WARNING]
 > **This app was vibe-coded with Codex and performs real file operations on emulator saves.**
 > **Always back up your saves before using it.** Save switching can overwrite, rename, or remove files.
->
-> I’m happy to accept issues and pull requests, but this is a quick spare-time project. I can’t guarantee active maintenance. It may be better to fork the project.
+
+I’m happy to accept issues and pull requests, but this is a quick spare-time project. I can’t guarantee active maintenance. It may be better to fork the project.
+
+This app relies on save files being named after the game/rom title (as Retroarch does), so won't work for emulators like Citra that do something else.
 
 
 
